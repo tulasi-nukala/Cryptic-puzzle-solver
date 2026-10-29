@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cryptic Puzzle Game</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(270deg, #6a11cb, #2575fc);
+  background-size: 400% 400%;
+  animation: gradientMove 10s ease infinite;
+  color: white;
+  text-align: center;
+}
+
+@keyframes gradientMove {
+  0% {background-position: 0% 50%;}
+  50% {background-position: 100% 50%;}
+  100% {background-position: 0% 50%;}
+}
+
+.container { margin-top: 80px; }
+
+.card {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  border-radius: 20px;
+  display: inline-block;
+  width: 350px;
+}
+
+button {
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #28a745;
+  color: white;
+  margin: 10px;
+  cursor: pointer;
+}
+
+button:hover { background: #218838; }
+
+.hidden { display: none; }
+
+input {
+  padding: 10px;
+  width: 90%;
+  border-radius: 10px;
+  border: none;
+  margin-top: 10px;
+}
+
+h1 {
+  animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+  from { text-shadow: 0 0 10px #fff; }
+  to { text-shadow: 0 0 20px #00ffea; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- 🎬 HOME PAGE -->
+<div id="home" class="container">
+  <div class="card">
+    <h1>🔐 Cryptic Puzzle Challenge</h1>
+    <p>Solve brain-twisting puzzles!</p>
+    <button onclick="startGame()">▶ Start Game</button>
+  </div>
+</div>
+
+<!-- 🎮 GAME PAGE -->
+<div id="game" class="container hidden">
+  <div class="card">
+
+    <h2 id="level">Level 1</h2>
+    <p>⏱ Time: <span id="timer">30</span>s</p>
+
+    <h3 id="puzzleText"></h3>
+
+    <input id="answer" placeholder="Enter solution (S=9,E=5...)" />
+
+    <br>
+    <button id="submitBtn" onclick="checkAnswer()">Submit</button>
+    <button id="solutionBtn" class="hidden" onclick="solvePuzzle()">💡 Get Solution</button>
+
+    <div id="status"></div>
+    <div id="output"></div>
+
+    <p>❤️ Lives: <span id="lives">3</span></p>
+    <p>🏆 Score: <span id="score">0</span></p>
+
+  </div>
+</div>
+
+<script>
+
+// 🎲 PUZZLES
+const puzzles = [
+  "SEND+MORE=MONEY",
+  "BASE+BALL=GAMES",
+  "TWO+TWO=FOUR",
+  "CROSS+ROADS=DANGER"
+];
+
+let currentPuzzle = "";
+let timer = 30;
+let interval;
+let score = 0;
+let level = 1;
+let lives = 3;
+let lastPuzzle = "";
+// 🎬 START GAME
+function startGame(){
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  loadPuzzle();
+}
+
+// 🎲 LOAD PUZZLE
+function loadPuzzle(){
+  clearInterval(interval);
+
+  timer = 30;
+  document.getElementById("timer").innerText = timer;
+
+  // 🔥 ensure new puzzle
+  do {
+    currentPuzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
+  } while(currentPuzzle === lastPuzzle);
+
+  lastPuzzle = currentPuzzle;
+
+  document.getElementById("puzzleText").innerText = currentPuzzle;
+  document.getElementById("level").innerText = "Level " + level;
+
+  document.getElementById("answer").value = "";
+  document.getElementById("status").innerText = "";
+  document.getElementById("output").innerText = "";
+
+  document.getElementById("submitBtn").classList.remove("hidden");
+  document.getElementById("solutionBtn").classList.add("hidden");
+
+  startTimer();
+}
+
+// ⏱ TIMER
+function startTimer(){
+  clearInterval(interval); // ✅ important
+  interval = setInterval(() => {
+    timer--;
+    document.getElementById("timer").innerText = timer;
+
+    if(timer <= 0){
+      clearInterval(interval);
+
+      document.getElementById("status").innerText = "⏰ Time Over!";
+      document.getElementById("submitBtn").classList.add("hidden");
+      document.getElementById("solutionBtn").classList.remove("hidden");
+      solvePuzzle();
+
+  // 👇 next level after delay
+    setTimeout(() => {
+    level++;
+    loadPuzzle();
+    },4000);
+return; // ✅ IMPORTANT: stop further execution
+    }
+
+  }, 1000);
+}
+
+function checkAnswer(){
+
+  let answer = document.getElementById("answer").value.trim();
+
+  // ❌ Empty input
+  if(answer === ""){
+    document.getElementById("status").innerText = "⚠ Please enter an answer!";
+    return;
+  }
+
+  // ❌ Wrong format
+  if(!answer.includes("=")){
+    document.getElementById("status").innerText = "⚠ Format: S=9,E=5...";
+    return;
+  }
+
+  clearInterval(interval);
+
+  let userMap = {};
+
+  try{
+    answer.split(",").forEach(pair => {
+      let [k,v] = pair.split("=");
+      userMap[k.trim()] = parseInt(v);
+    });
+  }catch{
+    document.getElementById("status").innerText = "⚠ Invalid format!";
+    return;
+  }
+
+  // ✅ CORRECT ANSWER
+  if(checkCorrect(userMap)){
+
+    score += 100;
+    document.getElementById("score").innerText = score;
+
+    document.getElementById("status").innerText = "🎉 Correct!";
+
+    level++;
+
+    setTimeout(loadPuzzle, 1500);
+
+  } 
+  // ❌ WRONG ANSWER
+  else {
+
+    lives--;
+    document.getElementById("lives").innerText = lives;
+
+    document.getElementById("status").innerText = "❌ Wrong Answer!";
+
+    // 💀 NO LIVES LEFT → GAME OVER
+    if(lives <= 0){
+
+      document.getElementById("status").innerText = "💀 No Lives Left! Game Over";
+      solvePuzzle();
+
+      setTimeout(() => {
+        endGame();
+      }, 4000);
+
+    } 
+    // 🔁 RETRY SAME LEVEL
+    else {
+      startTimer();
+    }
+  }
+}
+
+// 🧠 CHECK CORRECTNESS
+function checkCorrect(map){
+
+  let words = currentPuzzle.match(/[A-Z]+/g);
+
+  function wordToNumber(word){
+    return parseInt(word.split("").map(ch => map[ch]).join(""));
+  }
+
+  let sum = 0;
+  for(let i=0;i<words.length-1;i++){
+    sum += wordToNumber(words[i]);
+  }
+
+  let result = wordToNumber(words[words.length-1]);
+
+  return sum === result;
+}
+
+// 💀 GAME OVER
+function gameOver(){
+  clearInterval(interval);
+
+  document.getElementById("status").innerText = "💀 Game Over!";
+  document.getElementById("submitBtn").classList.add("hidden");
+  document.getElementById("solutionBtn").classList.remove("hidden");
+}
+
+function endGame(){
+
+  alert("🏆 Final Score: " + score);
+
+  // reset values
+  score = 0;
+  level = 1;
+  lives = 3;
+
+  document.getElementById("score").innerText = score;
+  document.getElementById("lives").innerText = lives;
+
+  // go back to home
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
+}
+// 🧠 SOLVER (YOUR LOGIC)
+function solvePuzzle(){
+
+let puzzle = currentPuzzle;
+
+document.getElementById("output").innerHTML = "⏳ Solving...";
+
+setTimeout(() => {
+
+let words = puzzle.match(/[A-Z]+/g);
+let letters = [...new Set(puzzle.replace(/[^A-Z]/g,''))];
+
+let used = new Array(10).fill(false);
+let map = {};
+
+function wordToNumber(word){
+    return parseInt(word.split("").map(ch => map[ch]).join(""));
+}
+
+function isLeadingZero(letter){
+    return words.some(w => w[0] === letter);
+}
+
+function dfs(index){
+
+    if(index === letters.length){
+
+        let sum = 0;
+
+        for(let i=0;i<words.length-1;i++){
+            sum += wordToNumber(words[i]);
+        }
+
+        let result = wordToNumber(words[words.length-1]);
+
+        return sum === result;
+    }
+
+    for(let d=0; d<=9; d++){
+
+        if(!used[d]){
+
+            if(d === 0 && isLeadingZero(letters[index])) continue;
+
+            map[letters[index]] = d;
+            used[d] = true;
+
+            if(dfs(index+1)) return true;
+
+            used[d] = false;
+        }
+    }
+
+    return false;
+}
+
+if(dfs(0)){
+    let output = "✅ Solution:<br>";
+    for(let l of letters){
+        output += l + " = " + map[l] + "<br>";
+    }
+    document.getElementById("output").innerHTML = output;
+
+    // ✅ move to next level after showing solution
+    setTimeout(() => {
+        level++;
+        loadPuzzle();
+    }, 3000);
+
+}
+else{
+    document.getElementById("output").innerHTML = "❌ No solution";
+
+    // optional: still move next
+    setTimeout(() => {
+        level++;
+        loadPuzzle();
+    }, 3000);
+}
+
+},100);
+}
+
+</script>
+
+</body>
+</html>
